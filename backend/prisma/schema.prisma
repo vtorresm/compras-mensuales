@@ -1,0 +1,88 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  nombre    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones
+  categories Category[]
+  purchases  Purchase[]
+  budgets    Budget[]
+
+  @@map("users")
+}
+
+model Category {
+  id          String   @id @default(uuid())
+  nombre      String
+  descripcion String?
+  color       String   @default("#1976d2")
+  icono       String?
+  userId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relaciones
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purchases Purchase[]
+  budgets   Budget[]
+
+  @@unique([nombre, userId])
+  @@map("categories")
+}
+
+model Purchase {
+  id            String   @id @default(uuid())
+  fecha         DateTime
+  monto         Float
+  establecimiento String
+  descripcion   String?
+  items         String? // JSON string para items individuales
+  metodoPago    MetodoPago
+  categoryId    String
+  userId        String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relaciones
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("purchases")
+}
+
+model Budget {
+  id           String   @id @default(uuid())
+  mes          DateTime // Año-mes para el presupuesto
+  montoLimite  Float
+  categoryId   String
+  userId       String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relaciones
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, userId, mes])
+  @@map("budgets")
+}
+
+enum MetodoPago {
+  efectivo
+  tarjeta
+  transferencia
+}
