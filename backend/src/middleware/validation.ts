@@ -108,3 +108,31 @@ export const purchaseSchemas = {
     },
   },
 };
+
+export const budgetSchemas = {
+  create: {
+    body: {
+      mes: (schema: any) => schema.date('Mes inválido'),
+      montoLimite: (schema: any) => schema.number().positive('El monto límite debe ser positivo'),
+      categoryId: (schema: any) => schema.min(1, 'La categoría es requerida'),
+    },
+  },
+  update: {
+    params: {
+      id: (schema: any) => schema.min(1, 'El ID es requerido'),
+    },
+    body: {
+      mes: (schema: any) => schema.date('Mes inválido').optional(),
+      montoLimite: (schema: any) => schema.number().positive('El monto límite debe ser positivo').optional(),
+      categoryId: (schema: any) => schema.optional(),
+    },
+  },
+  getAll: {
+    query: {
+      page: (schema: any) => schema.number().positive().optional(),
+      limit: (schema: any) => schema.number().positive().max(100).optional(),
+      mes: (schema: any) => schema.date('Mes inválido').optional(),
+      categoria: (schema: any) => schema.optional(),
+    },
+  },
+};

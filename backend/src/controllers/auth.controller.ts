@@ -22,6 +22,16 @@ const refreshTokenSchema = z.object({
   refreshToken: z.string().min(1, 'Refresh token requerido'),
 });
 
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'La contraseña actual es requerida'),
+  newPassword: z.string().min(8, 'La nueva contraseña debe tener al menos 8 caracteres'),
+});
+
+const updateProfileSchema = z.object({
+  nombre: z.string().min(2, 'El nombre debe tener al menos 2 caracteres').optional(),
+  email: z.string().email('Email inválido').optional(),
+});
+
 // Generar tokens
 const generateTokens = (userId: string, email: string) => {
   const accessToken = jwt.sign(
@@ -105,7 +115,7 @@ export const register = async (req: Request, res: Response) => {
       return res.status(400).json({
         success: false,
         message: 'Datos inválidos',
-        errors: error.errors,
+        errors: error.issues,
       });
     }
     
@@ -178,7 +188,7 @@ export const login = async (req: Request, res: Response) => {
       return res.status(400).json({
         success: false,
         message: 'Datos inválidos',
-        errors: error.errors,
+        errors: error.issues,
       });
     }
     
@@ -253,7 +263,7 @@ export const refreshToken = async (req: Request, res: Response) => {
       return res.status(400).json({
         success: false,
         message: 'Datos inválidos',
-        errors: error.errors,
+        errors: error.issues,
       });
     }
     
@@ -325,16 +335,92 @@ export const getProfile = async (req: Request, res: Response) => {
   }
 };
 
+// Cambiar contraseña
+export const changePassword = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.id;
+    const validatedData = changePasswordSchema.parse(req.body);
+
+    const { currentPassword, newPassword } = validatedData;
+
+    // Obtener usuario con contraseña
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado',
+      });
+    }
+
+    // Verificar contraseña actual
+    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
+
+    if (!isCurrentPasswordValid) {
+      return res.status(400).json({
+        success: false,
+        message: 'La contraseña actual es incorrecta',
+      });
+    }
+
+    // Hash de la nueva contraseña
+    const saltRounds = 12;
+    const hashedNewPassword = await bcrypt.hash(newPassword, saltRounds);
+
+    // Actualizar contraseña
+    await prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedNewPassword },
+    });
+
+    res.json({
+      success: true,
+      message: 'Contraseña cambiada exitosamente',
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        message: 'Datos inválidos',
+        errors: error.issues,
+      });
+    }
+
+    console.error('Error cambiando contraseña:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+    });
+  }
+};
+
 // Actualizar perfil
 export const updateProfile = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
-    const { nombre, email } = req.body;
-    
+    const validatedData = updateProfileSchema.parse(req.body);
+
+    const { nombre, email } = validatedData;
+
     const updateData: any = {};
     if (nombre) updateData.nombre = nombre;
-    if (email) updateData.email = email;
-    
+    if (email) {
+      // Verificar si el email ya está en uso por otro usuario
+      const existingUser = await prisma.user.findUnique({
+        where: { email },
+      });
+
+      if (existingUser && existingUser.id !== userId) {
+        return res.status(400).json({
+          success: false,
+          message: 'El email ya está en uso',
+        });
+      }
+      updateData.email = email;
+    }
+
     const user = await prisma.user.update({
       where: { id: userId },
       data: updateData,
@@ -346,13 +432,21 @@ export const updateProfile = async (req: Request, res: Response) => {
         updatedAt: true,
       },
     });
-    
+
     res.json({
       success: true,
       message: 'Perfil actualizado exitosamente',
       data: { user },
     });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        message: 'Datos inválidos',
+        errors: error.issues,
+      });
+    }
+
     console.error('Error actualizando perfil:', error);
     res.status(500).json({
       success: false,

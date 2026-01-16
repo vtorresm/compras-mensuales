@@ -18,9 +18,10 @@ model User {
   updatedAt DateTime @updatedAt
 
   // Relaciones
-  categories Category[]
-  purchases  Purchase[]
-  budgets    Budget[]
+  categories    Category[]
+  purchases     Purchase[]
+  budgets       Budget[]
+  refreshTokens RefreshToken[]
 
   @@map("users")
 }
@@ -79,6 +80,19 @@ model Budget {
 
   @@unique([categoryId, userId, mes])
   @@map("budgets")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  // Relaciones
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
 }
 
 enum MetodoPago {

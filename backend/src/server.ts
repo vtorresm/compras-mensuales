@@ -9,6 +9,7 @@ import authRoutes from './routes/auth';
 import categoryRoutes from './routes/categories';
 import purchaseRoutes from './routes/purchases';
 import budgetRoutes from './routes/budgets';
+import { authenticateToken } from './middleware/auth';
 import { PrismaClient } from '@prisma/client';
 
 // Cargar variables de entorno
@@ -70,7 +71,7 @@ app.use('/api/purchases', purchaseRoutes);
 app.use('/api/budgets', budgetRoutes);
 
 // Ruta para estadísticas del dashboard
-app.get('/api/dashboard/stats', async (req, res) => {
+app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
   try {
     const userId = req.user?.id;
     

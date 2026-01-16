@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import * as authController from '../controllers/auth.controller';
-import { validateBody } from '../middleware/validation';
+import { validateRequest } from '../middleware/validation';
 import { authenticateToken } from '../middleware/auth';
 import rateLimit from 'express-rate-limit';
 
@@ -42,12 +42,12 @@ const loginLimiter = rateLimit({
 const router = Router();
 
 // Rutas públicas
-router.post('/register', authLimiter, validateBody(registerSchema), authController.register);
-router.post('/login', loginLimiter, validateBody(loginSchema), authController.login);
+router.post('/register', authLimiter, validateRequest(registerSchema), authController.register);
+router.post('/login', loginLimiter, validateRequest(loginSchema), authController.login);
 
 // Rutas protegidas
-router.get('/me', authenticateToken, authController.getCurrentUser);
+router.get('/me', authenticateToken, authController.getProfile);
 router.put('/profile', authenticateToken, authController.updateProfile);
-router.post('/change-password', authenticateToken, validateBody(changePasswordSchema), authController.changePassword);
+router.post('/change-password', authenticateToken, validateRequest(changePasswordSchema), authController.changePassword);
 
 export default router;
