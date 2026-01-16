@@ -2,9 +2,8 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '../utils/prisma';
+import { AuthRequest } from '../middleware/auth';
 
 // Esquemas de validación
 const registerSchema = z.object({
@@ -91,7 +90,7 @@ export const register = async (req: Request, res: Response) => {
     const { accessToken, refreshToken } = generateTokens(user.id, user.email);
     
     // Guardar refresh token en la base de datos
-    await prisma.refreshToken.create({
+    await (prisma as any).refreshToken.create({
       data: {
         token: refreshToken,
         userId: user.id,
@@ -160,7 +159,7 @@ export const login = async (req: Request, res: Response) => {
     const { accessToken, refreshToken } = generateTokens(user.id, user.email);
     
     // Guardar refresh token en la base de datos
-    await prisma.refreshToken.create({
+    await (prisma as any).refreshToken.create({
       data: {
         token: refreshToken,
         userId: user.id,
@@ -206,7 +205,7 @@ export const refreshToken = async (req: Request, res: Response) => {
     const { refreshToken } = refreshTokenSchema.parse(req.body);
     
     // Verificar refresh token en la base de datos
-    const storedToken = await prisma.refreshToken.findUnique({
+    const storedToken = await (prisma as any).refreshToken.findUnique({
       where: { token: refreshToken },
       include: { user: true },
     });
@@ -229,7 +228,7 @@ export const refreshToken = async (req: Request, res: Response) => {
     }
     
     // Eliminar refresh token usado
-    await prisma.refreshToken.delete({
+    await (prisma as any).refreshToken.delete({
       where: { token: refreshToken },
     });
     
@@ -240,7 +239,7 @@ export const refreshToken = async (req: Request, res: Response) => {
     );
     
     // Guardar nuevo refresh token
-    await prisma.refreshToken.create({
+    await (prisma as any).refreshToken.create({
       data: {
         token: newRefreshToken,
         userId: storedToken.user.id,
@@ -281,7 +280,7 @@ export const logout = async (req: Request, res: Response) => {
     const { refreshToken } = req.body;
     
     if (refreshToken) {
-      await prisma.refreshToken.deleteMany({
+      await (prisma as any).refreshToken.deleteMany({
         where: { token: refreshToken },
       });
     }
@@ -300,9 +299,9 @@ export const logout = async (req: Request, res: Response) => {
 };
 
 // Perfil de usuario
-export const getProfile = async (req: Request, res: Response) => {
+export const getProfile = async (req: AuthRequest, res: Response) => {
   try {
-    const userId = (req as any).user.id;
+    const userId = req.user!.id;
     
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -336,9 +335,9 @@ export const getProfile = async (req: Request, res: Response) => {
 };
 
 // Cambiar contraseña
-export const changePassword = async (req: Request, res: Response) => {
+export const changePassword = async (req: AuthRequest, res: Response) => {
   try {
-    const userId = (req as any).user.id;
+    const userId = req.user!.id;
     const validatedData = changePasswordSchema.parse(req.body);
 
     const { currentPassword, newPassword } = validatedData;
@@ -397,9 +396,9 @@ export const changePassword = async (req: Request, res: Response) => {
 };
 
 // Actualizar perfil
-export const updateProfile = async (req: Request, res: Response) => {
+export const updateProfile = async (req: AuthRequest, res: Response) => {
   try {
-    const userId = (req as any).user.id;
+    const userId = req.user!.id;
     const validatedData = updateProfileSchema.parse(req.body);
 
     const { nombre, email } = validatedData;
